@@ -10,8 +10,8 @@
 void httpGETRequest(String serverName);
 
 //Wifi data
-const char* ssid = "INFINITUM129D_2.4";
-const char* password = "mxMrVUe3J2";
+const char* ssid = "geras";
+const char* password = "holis1234;";
 WiFiClient client;
 
 //Send data interval
@@ -19,7 +19,7 @@ int actualMillis = 0;
 const int millisDiff = 10000;
 
 //Your Domain name with URL path or IP address with path
-const char* serverName = "http://192.168.1.165:3000/location/";
+const char* serverName = "http://192.168.215.66:3000/location/";
 
 // Crear una instancia de HardwareSerial
 HardwareSerial modem(1); // Utiliza UART1
@@ -29,9 +29,9 @@ void setup() {
   Serial.begin(115200);
   while (!Serial) { ; } // Esperar a que se inicie el puerto serial
 
-
+  delay(10000);
   //Inicar WiFi
-  delay(5000);
+  /*;
   Serial.print("Conectando a WiFi");
   WiFi.begin(ssid, password);
   while(WiFi.status() != WL_CONNECTED) {
@@ -41,7 +41,7 @@ void setup() {
   }
   Serial.println("");
   Serial.print("Connected to WiFi network with IP Address: ");
-  Serial.println(WiFi.localIP());
+  Serial.println(WiFi.localIP());*/
   /*WiFi.mode(WIFI_STA);
   WiFi.disconnect();*/
   delay(100);
@@ -57,7 +57,24 @@ void setup() {
   //Iniciar GPS
   Serial.println("Iniciando comunicación con el módem...");
   bool atReady = false;
-  Serial.print("Conectando GPS");
+  
+  //Establecer comunicación con paginas web
+  Serial.println("Estableciendo hora en el modem...");
+  modem.println("AT+CTZU=1");
+  while(!atReady){
+    delay(500);
+    String modemData;
+    if (modem.available()){
+      modemData = modem.readStringUntil('\n');
+      Serial.println(modemData);
+    }
+    if(modemData.startsWith("OK")){
+        atReady = true;
+    }
+  }
+
+  atReady = false;
+  Serial.print("Conectando con GPS");
   modem.println("AT+CGNSSPWR=1");
   while(!atReady){
     delay(500);

@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 
 //Base de datos
 const config = {
-    host: 'uaaantojos.femat.dev',
+    host: 'localhost',
     user: 'gerardo',
     database: 'locaciones_electronica',
     password: 'FDelgadoG1209M#',
