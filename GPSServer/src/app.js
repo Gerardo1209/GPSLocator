@@ -72,19 +72,38 @@ app.get('/location/:locationString', async (req, res) => {
     let timestamp;
 
     // Convertir la latitud y la longitud a grados decimales
-    if (!isNaN(lat) && !isNaN(lon)) {
-        resultLat = posLat === 'S' ? -lat : lat;
-        resultLon = posLon === 'W' ? -lon : lon;
-    } else {
+    if (isNaN(lat) || isNaN(lon)) {
         res.status(400).send({ success: false, data: "Coordenadas inválidas" });
         return;
+    }
+
+    if(lat){
+        var dda = lat / 100;
+        dda = parseInt(dda.toString());
+        var ssa = lat - dda * 100;
+        var decLat = dda + ssa / 60;
+        if(posLat == "S"){
+            decLat = decLat * -1;
+        }
+        resultLat = decLat.toFixed(8);
+        //var ss = c
+    }
+    if(lon){
+        var ddo = lon / 100;
+        ddo = parseInt(ddo.toString());
+        var sso = lon - ddo * 100;
+        var decLon = ddo + sso / 60;
+        if(posLon == "W"){
+            decLon = decLon * -1;
+        }
+        resultLon = decLon.toFixed(8);
     }
 
     // Construir el timestamp
     if (date && time) {
         const [day, month, year] = date.match(/\d{2}/g);
         const [hour, minute, second] = time.match(/\d{2}/g);
-        timestamp = new Date(`20${year}-${month}-${day}T${hour}:${minute}:${second}`).toISOString();
+        timestamp = new Date(`20${year}-${month}-${day}T${hour}:${minute}:${second}`);
     } else {
         res.status(400).send({ success: false, data: "Fecha o hora inválidas" });
         return;
