@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mapa de Rutas</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    #map {
+      height: 600px;
+      width: 100%;
+      flex-grow: 1;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    footer {
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      position: relative;
+      bottom: 0;
+      width: 100%;
+    }
+
+    footer p {
+      margin: 5px 0;
+    }
+
+    footer .devs {
+      margin: 10px 0;
+    }
+
+    footer .devs span {
+      margin-right: 10px;
+    }
+
+    .reserved-rights {
+      font-size: 14px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .reserved-rights span {
+      margin-left: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mapa de Rutas</h1>
+  <div id="map"></div>
+  <footer>
+    <div class="reserved-rights">
+      <span>&copy; Derechos reservados 2024</span>
+    </div>
+  </footer>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+  <script>
+    const locations = <%- JSON.stringify(locations) %>;
+    const map = L.map('map').setView([21.86508683, -102.30347000], 13);
+    const polyline = L.polyline([], { color: 'blue' }).addTo(map);
+    const markers = [];
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    function updateMap(locations) {
+      const latlngs = locations.map(location => {
+        const lat = parseFloat(location.Altitud);
+        const lng = parseFloat(location.Longitud);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          return [lat, lng];
+        } else {
+          console.error("Coordenadas inválidas:", location);
+          return null;
+        }
+      }).filter(coord => coord !== null);
+      
+      if (latlngs.length > 0) {
+        polyline.setLatLngs(latlngs);
+        map.fitBounds(polyline.getBounds());
+
+        markers.forEach(marker => map.removeLayer(marker));
+        markers.length = 0;
+
+        const startLocation = latlngs[0];
+        const startMarker = L.marker(startLocation).addTo(map);
+        startMarker.bindPopup('<b>Inicio</b>').openPopup();
+        markers.push(startMarker);
+
+        for (let i = 0; i < latlngs.length; i += 5) {
+          const marker = L.marker(latlngs[i]).addTo(map);
+          marker.bindPopup(`<b>Fecha:</b> ${new Date(locations[i].Fecha).toLocaleString()}`).openPopup();
+          markers.push(marker);
+        }
+      } else {
+        console.error("No se encontraron coordenadas válidas.");
+      }
+    }
+
+    updateMap(locations);
+
+    setInterval(async () => {
+      try {
+        const response = await fetch('/consult');
+        const data = await response.json();
+        if (data.success) {
+          updateMap(data.data);
+          toastr.success('Los datos se han actualizado.');
+          console.log('Datos actualizados:', new Date().toLocaleString());
+        } else {
+          console.error("Error al obtener datos:", data);
+          toastr.error('Error al obtener datos.');
+        }
+      } catch (error) {
+        console.error("Error al obtener datos:", error);
+        toastr.error('Error al obtener datos.');
+      }
+    }, 60000); // Actualizar cada minuto (60000 ms)
+  </script>
+</body>
+</html>
