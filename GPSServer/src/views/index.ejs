@@ -106,7 +106,7 @@
         startMarker.bindPopup('<b>Inicio</b>').openPopup();
         markers.push(startMarker);
 
-        for (let i = 0; i < latlngs.length; i += 5) {
+        for (let i = 0; i < latlngs.length; i += 4) {
           const marker = L.marker(latlngs[i]).addTo(map);
           marker.bindPopup(`<b>Fecha:</b> ${new Date(locations[i].Fecha).toLocaleString()}`).openPopup();
           markers.push(marker);

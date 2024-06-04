@@ -117,6 +117,7 @@ app.get('/location/:locationString', async (req, res) => {
             [timestamp, resultLat, resultLon]
         );
         console.log(new Date().toISOString() + ": Se escribieron datos correctamente");
+        connection.end();
         res.send({ success: true, data: "Datos recibidos: " + req.params.locationString });
     } catch (err) {
         res.status(500).send({ success: false, data: err.message });
@@ -128,6 +129,7 @@ app.get('/consult', async (req, res) => {
     try {
         const connection = await conexionBD();
         const [rows] = await connection.query('SELECT * FROM Ubicacion;');
+        connection.end();
         res.send({ success: true, data: rows });
     } catch (err) {
         res.send({ success: false, data: err.message });
