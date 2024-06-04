@@ -10,7 +10,7 @@ void httpGETRequest(String serverName);
 
 //Send data interval
 int actualMillis = 0;
-const int millisDiff = 20000;
+const int millisDiff = 25000;
 
 //Your Domain name with URL path or IP address with path
 const char* serverName = "https://electronicaupload.femat.dev/location/";
