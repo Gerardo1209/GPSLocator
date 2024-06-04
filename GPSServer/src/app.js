@@ -36,7 +36,7 @@ app.use(cors());
 
 // Configurar EJS como motor de vistas
 app.set('view engine', 'ejs');
-app.set('views', path.join(process.cwd(), 'views'));
+app.set('views', path.resolve('src', 'views')); // Ruta actualizada para el directorio de vistas
 
 // Servir archivos estáticos (por ejemplo, Leaflet CSS y JS)
 app.use(express.static(path.join(process.cwd(), 'public')));
