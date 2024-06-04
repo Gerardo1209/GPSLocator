@@ -5,9 +5,6 @@
 #define MODEM_TX_PIN 21
 #define MAX_TOKENS 20
 
-//Funciones
-void httpGETRequest(String serverName);
-
 //Send data interval
 int actualMillis = 0;
 const int millisDiff = 25000;
