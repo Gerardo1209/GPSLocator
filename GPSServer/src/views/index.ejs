@@ -1,46 +1,121 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Mapa de Rutas</title>
+  <title>gps - esp32: tracker</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
     #map {
       height: 600px;
       width: 100%;
+      flex-grow: 1;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    footer {
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      position: relative;
+      bottom: 0;
+      width: 100%;
+    }
+
+    footer p {
+      margin: 5px 0;
+    }
+
+    footer .devs {
+      margin: 10px 0;
+    }
+
+    footer .devs span {
+      margin-right: 10px;
+    }
+
+    .reserved-rights {
+      font-size: 14px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .reserved-rights span {
+      margin-left: 5px;
     }
   </style>
 </head>
 <body>
-  <h1>Mapa de Rutas</h1>
+  <h1>gps - esp32: tracker</h1>
   <div id="map"></div>
+  <footer>
+    <div class="reserved-rights">
+      <span>&copy; Derechos reservados 2024</span>
+    </div>
+  </footer>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const map = L.map('map').setView([21.90326817, -102.27382967], 13);
+    // Insertar la variable locations desde el servidor de forma segura
+    const locations = <%- JSON.stringify(locations) %>;
+
+    const map = L.map('map').setView([21.86508683, -102.30347000], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    const locations = <%- JSON.stringify(locations) %>;
+    // Verifica que 'locations' esté definido y no sea nulo
+    if (locations && locations.length > 0) {
+      const latlngs = locations.map(location => {
+        const lat = parseFloat(location.Altitud);
+        const lng = parseFloat(location.Longitud);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          return [lat, lng];
+        } else {
+          console.error("Coordenadas inválidas:", location);
+          return null;
+        }
+      }).filter(coord => coord !== null);
+      
+      // Solo continua si hay coordenadas válidas
+      if (latlngs.length > 0) {
+        // Añade la polilínea al mapa
+        const polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
 
-    // Ordenar las ubicaciones por fecha y hora
-    locations.sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
+        // Ajusta el mapa para que muestre la polilínea completa
+        map.fitBounds(polyline.getBounds());
 
-    const latlngs = locations.map(loc => [parseFloat(loc.Altitud), parseFloat(loc.Longitud)]);
+        // Marcar el punto de inicio
+        const startLocation = latlngs[0];
+        const startMarker = L.marker(startLocation).addTo(map);
+        startMarker.bindPopup('<b>Inicio</b>').openPopup();
 
-    if (latlngs.length > 0) {
-      const polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
-      map.fitBounds(polyline.getBounds());
-
-      // Marcar el punto de inicio
-      const startMarker = L.marker([parseFloat(locations[0].Altitud), parseFloat(locations[0].Longitud)]).addTo(map);
-      startMarker.bindPopup('<b>Inicio</b>').openPopup();
-
-      // Añadir marcadores por defecto cada 5 timestamps
-      for (let i = 15; i < locations.length; i += 15) {
-        const marker = L.marker([parseFloat(locations[i].Altitud), parseFloat(locations[i].Longitud)]).addTo(map);
-        marker.bindPopup(`<b>Timestamp:</b> ${new Date(locations[i].Fecha).toLocaleString()}`).openPopup();
+        // Añadir marcadores por defecto cada 5 ubicaciones
+        for (let i = 0; i < latlngs.length; i += 5) {
+          const marker = L.marker(latlngs[i]).addTo(map);
+          marker.bindPopup(`<b>Fecha:</b> ${new Date(locations[i].Fecha).toLocaleString()}`).openPopup();
+        }
+      } else {
+        console.error("No se encontraron coordenadas válidas.");
       }
+    } else {
+      console.error("No se encontraron datos de ubicación válidos.");
     }
   </script>
 </body>
