@@ -1,5 +1,4 @@
-#include <WiFi.h>
-#include <HTTPClient.h>
+#include <Arduino.h>
 
 // Definir los pines para UART
 #define MODEM_RX_PIN 20
@@ -9,20 +8,16 @@
 //Funciones
 void httpGETRequest(String serverName);
 
-//Wifi data
-const char* ssid = "geras";
-const char* password = "holis1234;";
-WiFiClient client;
-
 //Send data interval
 int actualMillis = 0;
-const int millisDiff = 10000;
+const int millisDiff = 20000;
 
 //Your Domain name with URL path or IP address with path
-const char* serverName = "http://192.168.215.66:3000/location/";
+const char* serverName = "https://electronicaupload.femat.dev/location/";
 
 // Crear una instancia de HardwareSerial
 HardwareSerial modem(1); // Utiliza UART1
+String modemData;
 
 void setup() {
   // Iniciar la comunicación serial con el PC
@@ -44,7 +39,6 @@ void setup() {
   Serial.println(WiFi.localIP());*/
   /*WiFi.mode(WIFI_STA);
   WiFi.disconnect();*/
-  delay(100);
 
 
   // Iniciar la comunicación serial con el módem
@@ -54,16 +48,22 @@ void setup() {
     Serial.print(".");
   }
 
+  
+  while(modem.available()){
+    modemData = modem.readStringUntil('\n');
+    Serial.println(modemData);
+  }
+
   //Iniciar GPS
   Serial.println("Iniciando comunicación con el módem...");
   bool atReady = false;
   
-  //Establecer comunicación con paginas web
-  Serial.println("Estableciendo hora en el modem...");
+  //Establecer comunicación con HTTP
+  Serial.println("Estableciendo fecha en el modem...");
   modem.println("AT+CTZU=1");
   while(!atReady){
     delay(500);
-    String modemData;
+    
     if (modem.available()){
       modemData = modem.readStringUntil('\n');
       Serial.println(modemData);
@@ -71,31 +71,47 @@ void setup() {
     if(modemData.startsWith("OK")){
         atReady = true;
     }
+    
   }
-
+  delay(1000);
   atReady = false;
-  Serial.print("Conectando con GPS");
-  modem.println("AT+CGNSSPWR=1");
+  Serial.println("Iniciando servicio HTTP...");
+  modem.println("AT+HTTPINIT");
   while(!atReady){
     delay(500);
-    //Serial.print(".");
-    String modemData;
     if (modem.available()){
       modemData = modem.readStringUntil('\n');
       Serial.println(modemData);
     }
-    if(modemData.startsWith("$G")){
+    if(modemData.startsWith("OK")){
         atReady = true;
     }
-    if(modemData.compareTo("+CGNSSPWR: READY!") == 13){
-      Serial.println("Configurando comunicación");
+    if(modemData.startsWith("ERROR")){
+        atReady = true;
+    }
+  }
+
+  atReady = false;
+  Serial.print("Conectando con GPS");
+  modem.println(" AT+CGNSSPWR=1");
+  while(!atReady){
+    delay(500);
+    //Serial.print(".");
+    if (modem.available()){
+      modemData = modem.readStringUntil('\n');
+      Serial.println(modemData);
+    }
+    if(modemData.startsWith("OK")){
+        atReady = true;
+    }
+    delay(5000);
+    /*if(modemData.compareTo("+CGNSSPWR: READY!") == 13){
+      Serial.println("Configurando comunicación del GPS");
       delay(100);
       modem.println("AT+CGNSSPORTSWITCH=1,1");
       delay(400);
-      modem.println("AT+CGNSSTST=1");
-      delay(400);
       atReady = true;
-    }
+    }*/
   }
 }
 
@@ -117,57 +133,42 @@ void loop() {
   }
   delay(1000);*/
     // Leer datos del módem y enviarlos al puerto serial del PC
-    if (modem.available()) {
-        String modemInfo = modem.readStringUntil('\n');
-        Serial.println(modemInfo);
-        if(modemInfo.startsWith("$GNRMC")){
-            
-            
-            //httpGETRequest(serverName);
-            String tokens[MAX_TOKENS];
-            int tokenCount = 0;
-            int startIndex = 0;
-            int endIndex = modemInfo.indexOf(',');
 
-            while (endIndex != -1) {
-                // Extraer el token
-                tokens[tokenCount] = modemInfo.substring(startIndex, endIndex);
-                tokenCount++;
-                startIndex = endIndex + 1;
-                endIndex = modemInfo.indexOf(',', startIndex);
-            }
-            // Agregar el último token después de la última coma
-            if (startIndex < modemInfo.length()) {
-                tokens[tokenCount] = modemInfo.substring(startIndex);
-                tokenCount++;
-            }
-            //Envia al servidor los datos según los millis determinados
-            if(millis() - actualMillis > millisDiff){
-              actualMillis = millis();
-              String url = serverName;
-              url.concat(tokens[1] + "," + tokens[2] + "," + tokens[3] + "," + tokens[4] + "," + tokens[5] + "," + tokens[6]);
-              if (WiFi.status() == WL_CONNECTED) { // Verifica si está conectado a WiFi
-                HTTPClient http;
-                http.begin(client, url); // URL del servidor
-                int httpCode = http.GET(); // Realiza la petición
-                if (httpCode > 0) { // Si la petición fue exitosa
-                  String payload = http.getString(); // Obtiene el cuerpo de la respuesta
-                  Serial.println(payload); // Imprime el contenido de la respuesta
-                } else {
-                  Serial.println("Error en la petición HTTP");
-                }
-                http.end(); // Libera los recursos
-              }
-            }
-            
-        }
+  while(modem.available()){
+    modemData = modem.readStringUntil('\n');
+    Serial.println(modemData);
+    delay(100);
+  }
+  if(millis() - actualMillis > millisDiff){ //Cada X segundos revisa el GPS y envia los datos
+    modem.println("AT+CGPSINFO");
+    delay(500);
+    String sendTo;
+    while(modem.available()){
+      modemData = modem.readStringUntil('\n');
+      Serial.println(modemData);
+      if(modemData.startsWith("+CGPSINFO")){
+        modemData=modemData.substring(11, modemData.length() - 1);
+        String url = serverName;
+        url.concat(modemData);
+        url.concat("\"");
+        sendTo = "AT+HTTPPARA=\"URL\",\"" + url;
+      }
     }
-
-    // Leer datos del puerto serial del PC y enviarlos al módem
-    if (Serial.available()) {
-        String pcData = Serial.readStringUntil('\n');
-        Serial.print("Envaindo mensaje: ");
-        Serial.println(pcData);
-        modem.println(pcData);
+    delay(1000);
+    modem.println(sendTo);
+    while(modem.available()){
+      String ok = modem.readStringUntil('\n');
+      Serial.println(ok);
     }
+    modem.println("AT+HTTPACTION=0");
+    actualMillis = millis();
+  }
+  // Leer datos del puerto serial del PC y enviarlos al módem
+  if (Serial.available()) {
+      String pcData = Serial.readStringUntil('\n');
+      Serial.print("Envaindo mensaje: ");
+      Serial.println(pcData);
+      modem.println(pcData);
+      delay(1000);
+  }
 }
