@@ -23,6 +23,9 @@
 
     const locations = <%- JSON.stringify(locations) %>;
 
+    // Ordenar las ubicaciones por fecha y hora
+    locations.sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
+
     const latlngs = locations.map(loc => [parseFloat(loc.Altitud), parseFloat(loc.Longitud)]);
 
     if (latlngs.length > 0) {
