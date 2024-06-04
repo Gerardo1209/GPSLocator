@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>gps - esp32: tracker</title>
+  <title>Mapa de Rutas</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -62,7 +63,7 @@
   </style>
 </head>
 <body>
-  <h1>gps - esp32: tracker</h1>
+  <h1>Mapa de Rutas</h1>
   <div id="map"></div>
   <footer>
     <div class="reserved-rights">
@@ -70,18 +71,18 @@
     </div>
   </footer>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
   <script>
-    // Insertar la variable locations desde el servidor de forma segura
     const locations = <%- JSON.stringify(locations) %>;
-
     const map = L.map('map').setView([21.86508683, -102.30347000], 13);
+    const polyline = L.polyline([], { color: 'blue' }).addTo(map);
+    const markers = [];
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // Verifica que 'locations' esté definido y no sea nulo
-    if (locations && locations.length > 0) {
+    function updateMap(locations) {
       const latlngs = locations.map(location => {
         const lat = parseFloat(location.Altitud);
         const lng = parseFloat(location.Longitud);
@@ -93,30 +94,47 @@
         }
       }).filter(coord => coord !== null);
       
-      // Solo continua si hay coordenadas válidas
       if (latlngs.length > 0) {
-        // Añade la polilínea al mapa
-        const polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
-
-        // Ajusta el mapa para que muestre la polilínea completa
+        polyline.setLatLngs(latlngs);
         map.fitBounds(polyline.getBounds());
 
-        // Marcar el punto de inicio
+        markers.forEach(marker => map.removeLayer(marker));
+        markers.length = 0;
+
         const startLocation = latlngs[0];
         const startMarker = L.marker(startLocation).addTo(map);
         startMarker.bindPopup('<b>Inicio</b>').openPopup();
+        markers.push(startMarker);
 
-        // Añadir marcadores por defecto cada 5 ubicaciones
         for (let i = 0; i < latlngs.length; i += 5) {
           const marker = L.marker(latlngs[i]).addTo(map);
           marker.bindPopup(`<b>Fecha:</b> ${new Date(locations[i].Fecha).toLocaleString()}`).openPopup();
+          markers.push(marker);
         }
       } else {
         console.error("No se encontraron coordenadas válidas.");
       }
-    } else {
-      console.error("No se encontraron datos de ubicación válidos.");
     }
+
+    updateMap(locations);
+
+    setInterval(async () => {
+      try {
+        const response = await fetch('/consult');
+        const data = await response.json();
+        if (data.success) {
+          updateMap(data.data);
+          toastr.success('Los datos se han actualizado.');
+          console.log('Datos actualizados:', new Date().toLocaleString());
+        } else {
+          console.error("Error al obtener datos:", data);
+          toastr.error('Error al obtener datos.');
+        }
+      } catch (error) {
+        console.error("Error al obtener datos:", error);
+        toastr.error('Error al obtener datos.');
+      }
+    }, 60000); // Actualizar cada minuto (60000 ms)
   </script>
 </body>
 </html>
